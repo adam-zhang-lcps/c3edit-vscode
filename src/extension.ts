@@ -8,7 +8,7 @@ let backendProcess: ChildProcess | undefined;
 
 // This method is called when your extension is activated
 // Your extension is activated the very first time the command is executed
-export function activate(context: vscode.ExtensionContext) {
+export function activate(context: vscode.ExtensionContext): void {
   // Use the console to output diagnostic information (console.log) and errors (console.error)
   // This line of code will only be executed once when your extension is activated
   console.log('Congratulations, your extension "c3edit" is now active!');
@@ -46,21 +46,23 @@ export function activate(context: vscode.ExtensionContext) {
   );
 }
 
-export function deactivate() {
+export function deactivate(): void {
   // Terminate the backend process if it's running
   if (backendProcess) {
     backendProcess.kill();
   }
 }
 
-function ensureBackendProcessActive() {
+function ensureBackendProcessActive(): boolean {
   if (!backendProcess) {
     vscode.window.showErrorMessage('Backend process is not active.');
     return false;
   }
+  
+  return true;
 }
 
-function createDocument() {
+function createDocument(): void {
   if (!ensureBackendProcessActive()) {
     return;
   }
@@ -74,7 +76,7 @@ function createDocument() {
   }
 }
 
-function processBackendMessage(data: Buffer) {
+function processBackendMessage(data: Buffer): void {
   try {
     const message = JSON.parse(data.toString());
     vscode.window.showInformationMessage(`Backend message: ${JSON.stringify(message)}`);

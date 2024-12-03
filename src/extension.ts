@@ -18,14 +18,6 @@ export function activate(context: vscode.ExtensionContext) {
   const backendPath = vscode.workspace.getConfiguration().get<string>('c3edit.backendPath', '');
   console.log(`Backend path: ${backendPath}`);
   
-  // Now provide the implementation of the command with registerCommand
-  // The commandId parameter must match the command field in package.json
-  const disposable = vscode.commands.registerCommand('c3edit.helloWorld', () => {
-	// The code you place here will be executed every time your command is executed
-	// Display a message box to the user
-	vscode.window.showInformationMessage('Hello World from c3edit!');
-  });
-
   // Register a new command to run the backend binary
   const runBackendDisposable = vscode.commands.registerCommand('c3edit.runBackend', () => {
 	if (backendPath) {
@@ -50,8 +42,6 @@ export function activate(context: vscode.ExtensionContext) {
   });
 
   context.subscriptions.push(runBackendDisposable);
-
-  context.subscriptions.push(disposable);
 }
 
 export function deactivate() {

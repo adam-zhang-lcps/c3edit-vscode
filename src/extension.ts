@@ -46,7 +46,18 @@ export function activate(context: vscode.ExtensionContext) {
   );
 }
 
+function ensureBackendProcessActive() {
+  if (!backendProcess) {
+    vscode.window.showErrorMessage('Backend process is not active.');
+    return false;
+  }
+}
+
 function createDocument() {
+  if (!ensureBackendProcessActive()) {
+    return;
+  }
+  
   const activeEditor = vscode.window.activeTextEditor;
   if (activeEditor) {
     const fileName = activeEditor.document.fileName;

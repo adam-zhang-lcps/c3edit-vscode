@@ -6,6 +6,10 @@ import * as path from 'path';
 
 // Global variable to store the process handle
 let backendProcess: ChildProcess | undefined;
+// Global variable to store the document currently being created on the backend.
+let currentlyCreatingDocument: string | undefined;
+// Global variable to track editors with active documents.
+const activeDocuments: Map<string, string> = new Map();
 
 // This method is called when your extension is activated
 // Your extension is activated the very first time the command is executed
@@ -75,6 +79,7 @@ function createDocument(): void {
   const activeEditor = vscode.window.activeTextEditor;
   if (activeEditor) {
     const name = path.basename(activeEditor.document.fileName);
+    currentlyCreatingDocument = name;
     const initialContent = activeEditor.document.getText();
     sendMessageToBackend("create_document", {
       name,
@@ -90,7 +95,14 @@ function processBackendMessage(data: Buffer): void {
     const message = JSON.parse(data.toString());
     switch (message.type) {
       case 'create_document_response':
-        vscode.window.showInformationMessage(`Document created with ID ${message.id}.`);
+        if (currentlyCreatingDocument) {
+          vscode.window.showInformationMessage(`Document created with ID ${message.id}.`);
+          
+          activeDocuments.set(currentlyCreatingDocument, message.id);
+          currentlyCreatingDocument = undefined;
+        } else {
+          console.warn('No document was being created when response was received.');
+        }
         break;
       default:
         console.warn('Unknown message type:', message.type);

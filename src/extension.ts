@@ -84,3 +84,12 @@ function processBackendMessage(data: Buffer): void {
     vscode.window.showErrorMessage(`Failed to parse backend message: ${error.message}`);
   }
 }
+
+function sendMessageToBackend(json: object): void {
+  if (!ensureBackendProcessActive()) {
+    return;
+  }
+
+  const text = JSON.stringify(json);
+  backendProcess!.stdin!.write(text + '\n');
+}

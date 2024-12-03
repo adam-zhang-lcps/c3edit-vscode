@@ -76,7 +76,6 @@ function createDocument(): void {
   if (activeEditor) {
     const name = path.basename(activeEditor.document.fileName);
     const initialContent = activeEditor.document.getText();
-    vscode.window.showInformationMessage(`Creating document with name: ${name}`);
     sendMessageToBackend("create_document", {
       name,
       initial_content: initialContent,
@@ -89,7 +88,14 @@ function createDocument(): void {
 function processBackendMessage(data: Buffer): void {
   try {
     const message = JSON.parse(data.toString());
-    vscode.window.showInformationMessage(`Backend message: ${JSON.stringify(message)}`);
+    switch (message.type) {
+      case 'create_document_response':
+        vscode.window.showInformationMessage(`Document created with ID ${message.id}.`);
+        break;
+      default:
+        console.warn('Unknown message type:', message.type);
+        break;
+    }
   } catch (error: any) {
     vscode.window.showErrorMessage(`Failed to parse backend message: ${error.message}`);
   }

@@ -4,7 +4,7 @@ import * as vscode from 'vscode';
 import { spawn, ChildProcess } from 'child_process';
 
 // Global variable to store the process handle
-let backendProcess: ChildProcess;
+let backendProcess: ChildProcess | undefined;
 
 // This method is called when your extension is activated
 // Your extension is activated the very first time the command is executed
@@ -46,6 +46,13 @@ export function activate(context: vscode.ExtensionContext) {
   );
 }
 
+export function deactivate() {
+  // Terminate the backend process if it's running
+  if (backendProcess) {
+    backendProcess.kill();
+  }
+}
+
 function ensureBackendProcessActive() {
   if (!backendProcess) {
     vscode.window.showErrorMessage('Backend process is not active.');
@@ -64,13 +71,6 @@ function createDocument() {
     vscode.window.showInformationMessage(`Current file name: ${fileName}`);
   } else {
     vscode.window.showInformationMessage('No active editor found.');
-  }
-}
-
-export function deactivate() {
-  // Terminate the backend process if it's running
-  if (backendProcess) {
-    backendProcess.kill();
   }
 }
 

@@ -71,11 +71,12 @@ function createDocument(): void {
   const activeEditor = vscode.window.activeTextEditor;
   if (activeEditor) {
     const name = path.basename(activeEditor.document.fileName);
+    const initialContent = activeEditor.document.getText();
     vscode.window.showInformationMessage(`Creating document with name: ${name}`);
     sendMessageToBackend({
       type: "create_document",
       name,
-      initial_content: "foo",
+      initial_content: initialContent,
     });
   } else {
     vscode.window.showInformationMessage('No active editor window found.');

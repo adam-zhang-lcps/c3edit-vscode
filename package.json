@@ -12,6 +12,17 @@
   "activationEvents": [],
   "main": "./out/extension.js",
   "contributes": {
+    "configuration": {
+      "type": "object",
+      "title": "c3edit Configuration",
+      "properties": {
+        "c3edit.backendPath": {
+          "type": "string",
+          "default": "",
+          "description": "Path to the backend binary."
+        }
+      }
+    },
     "commands": [
       {
         "command": "c3edit.helloWorld",

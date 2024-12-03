@@ -9,7 +9,6 @@ let backendProcess: ChildProcess;
 // This method is called when your extension is activated
 // Your extension is activated the very first time the command is executed
 export function activate(context: vscode.ExtensionContext) {
-
   // Use the console to output diagnostic information (console.log) and errors (console.error)
   // This line of code will only be executed once when your extension is activated
   console.log('Congratulations, your extension "c3edit" is now active!');
@@ -19,29 +18,28 @@ export function activate(context: vscode.ExtensionContext) {
   console.log(`Backend path: ${backendPath}`);
   
   // Register a new command to run the backend binary
-  const runBackendDisposable = vscode.commands.registerCommand('c3edit.runBackend', () => {
-	if (backendPath) {
-      backendProcess = spawn(backendPath);
+  context.subscriptions.push(
+    vscode.commands.registerCommand('c3edit.runBackend', () => {
+	  if (backendPath) {
+        backendProcess = spawn(backendPath);
 
-      backendProcess.stdout!.on('data', processBackendMessage);
+        backendProcess.stdout!.on('data', processBackendMessage);
 
-      backendProcess.stderr!.on('data', (data) => {
-        vscode.window.showErrorMessage(`Backend error: ${data}`);
-      });
+        backendProcess.stderr!.on('data', (data) => {
+          vscode.window.showErrorMessage(`Backend error: ${data}`);
+        });
 
-      backendProcess.on('error', (error) => {
-        vscode.window.showErrorMessage(`Error executing backend: ${error.message}`);
-      });
+        backendProcess.on('error', (error) => {
+          vscode.window.showErrorMessage(`Error executing backend: ${error.message}`);
+        });
 
-      backendProcess.on('close', (code) => {
-        vscode.window.showInformationMessage(`Backend process exited with code ${code}`);
-      });
-	} else {
-	  vscode.window.showErrorMessage('Backend path is not set. Please configure it in the settings.');
-	}
-  });
-
-  context.subscriptions.push(runBackendDisposable);
+        backendProcess.on('close', (code) => {
+          vscode.window.showInformationMessage(`Backend process exited with code ${code}`);
+        });
+	  } else {
+	    vscode.window.showErrorMessage('Backend path is not set. Please configure it in the settings.');
+	  }
+    }));
 }
 
 export function deactivate() {

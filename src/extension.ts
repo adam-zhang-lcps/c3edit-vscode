@@ -2,6 +2,7 @@
 // Import the module and reference it with the alias vscode in your code below
 import * as vscode from 'vscode';
 import { spawn, ChildProcess } from 'child_process';
+import * as path from 'path';
 
 // Global variable to store the process handle
 let backendProcess: ChildProcess | undefined;
@@ -69,10 +70,15 @@ function createDocument(): void {
   
   const activeEditor = vscode.window.activeTextEditor;
   if (activeEditor) {
-    const fileName = activeEditor.document.fileName;
-    vscode.window.showInformationMessage(`Current file name: ${fileName}`);
+    const name = path.basename(activeEditor.document.fileName);
+    vscode.window.showInformationMessage(`Creating document with name: ${name}`);
+    sendMessageToBackend({
+      type: "create_document",
+      name,
+      initial_content: "foo",
+    });
   } else {
-    vscode.window.showInformationMessage('No active editor found.');
+    vscode.window.showInformationMessage('No active editor window found.');
   }
 }
 

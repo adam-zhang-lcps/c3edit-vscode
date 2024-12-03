@@ -31,6 +31,10 @@
       {
         "command": "c3edit.runBackend",
         "title": "Run Backend"
+      },
+      {
+        "command": "c3edit.createDocument",
+        "title": "Create Document"
       }
     ]
   },

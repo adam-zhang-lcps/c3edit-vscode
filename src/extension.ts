@@ -40,6 +40,20 @@ export function activate(context: vscode.ExtensionContext) {
 	    vscode.window.showErrorMessage('Backend path is not set. Please configure it in the settings.');
 	  }
     }));
+
+  context.subscriptions.push(
+    vscode.commands.registerCommand('c3edit.createDocument', createDocument)
+  );
+}
+
+function createDocument() {
+  const activeEditor = vscode.window.activeTextEditor;
+  if (activeEditor) {
+    const fileName = activeEditor.document.fileName;
+    vscode.window.showInformationMessage(`Current file name: ${fileName}`);
+  } else {
+    vscode.window.showInformationMessage('No active editor found.');
+  }
 }
 
 export function deactivate() {

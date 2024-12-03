@@ -37,6 +37,10 @@ export function activate(context: vscode.ExtensionContext): void {
         backendProcess.on('close', (code) => {
           vscode.window.showInformationMessage(`Backend process exited with code ${code}`);
         });
+
+        backendProcess.on('spawn', () => {
+          vscode.window.showInformationMessage(`Backend process successfully running!`);
+        })
 	  } else {
 	    vscode.window.showErrorMessage('Backend path is not set. Please configure it in the settings.');
 	  }

@@ -27,6 +27,10 @@
       {
         "command": "c3edit.helloWorld",
         "title": "Hello World"
+      },
+      {
+        "command": "c3edit.runBackend",
+        "title": "Run Backend"
       }
     ]
   },

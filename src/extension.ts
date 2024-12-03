@@ -22,6 +22,28 @@ export function activate(context: vscode.ExtensionContext) {
 		vscode.window.showInformationMessage('Hello World from c3edit!');
 	});
 
+	// Register a new command to run the backend binary
+	const runBackendDisposable = vscode.commands.registerCommand('c3edit.runBackend', () => {
+		if (backendPath) {
+			const { exec } = require('child_process');
+			exec(backendPath, (error: any, stdout: string, stderr: string) => {
+				if (error) {
+					vscode.window.showErrorMessage(`Error executing backend: ${error.message}`);
+					return;
+				}
+				if (stderr) {
+					vscode.window.showErrorMessage(`Backend error: ${stderr}`);
+					return;
+				}
+				vscode.window.showInformationMessage(`Backend output: ${stdout}`);
+			});
+		} else {
+			vscode.window.showErrorMessage('Backend path is not set. Please configure it in the settings.');
+		}
+	});
+
+	context.subscriptions.push(runBackendDisposable);
+
 	context.subscriptions.push(disposable);
 }
 

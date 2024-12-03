@@ -31,15 +31,11 @@ export function activate(context: vscode.ExtensionContext) {
 	if (backendPath) {
       backendProcess = spawn(backendPath);
 
-      if (backendProcess.stdout) {
-        backendProcess.stdout.on('data', processBackendMessage);
-      }
+      backendProcess.stdout!.on('data', processBackendMessage);
 
-      if (backendProcess.stderr) {
-        backendProcess.stderr.on('data', (data) => {
-          vscode.window.showErrorMessage(`Backend error: ${data}`);
-        });
-      }
+      backendProcess.stderr!.on('data', (data) => {
+        vscode.window.showErrorMessage(`Backend error: ${data}`);
+      });
 
       backendProcess.on('error', (error) => {
         vscode.window.showErrorMessage(`Error executing backend: ${error.message}`);

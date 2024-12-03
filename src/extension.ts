@@ -73,8 +73,7 @@ function createDocument(): void {
     const name = path.basename(activeEditor.document.fileName);
     const initialContent = activeEditor.document.getText();
     vscode.window.showInformationMessage(`Creating document with name: ${name}`);
-    sendMessageToBackend({
-      type: "create_document",
+    sendMessageToBackend("create_document", {
       name,
       initial_content: initialContent,
     });
@@ -92,11 +91,14 @@ function processBackendMessage(data: Buffer): void {
   }
 }
 
-function sendMessageToBackend(json: object): void {
+function sendMessageToBackend(type: string, json: object): void {
   if (!ensureBackendProcessActive()) {
     return;
   }
 
-  const text = JSON.stringify(json);
+  const text = JSON.stringify({
+    type,
+    ...json
+  });
   backendProcess!.stdin!.write(text + '\n');
 }

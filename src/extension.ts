@@ -4,7 +4,7 @@ import * as vscode from 'vscode';
 import { spawn, ChildProcess } from 'child_process';
 
 // Global variable to store the process handle
-let backendProcess: ChildProcess | undefined;
+let backendProcess: ChildProcess;
 
 // This method is called when your extension is activated
 // Your extension is activated the very first time the command is executed
@@ -31,13 +31,15 @@ export function activate(context: vscode.ExtensionContext) {
 	if (backendPath) {
       backendProcess = spawn(backendPath);
 
-      backendProcess.stdout.on('data', (data) => {
-        vscode.window.showInformationMessage(`Backend output: ${data}`);
-      });
+      if (backendProcess.stdout) {
+        backendProcess.stdout.on('data', processBackendMessage);
+      }
 
-      backendProcess.stderr.on('data', (data) => {
-        vscode.window.showErrorMessage(`Backend error: ${data}`);
-      });
+      if (backendProcess.stderr) {
+        backendProcess.stderr.on('data', (data) => {
+          vscode.window.showErrorMessage(`Backend error: ${data}`);
+        });
+      }
 
       backendProcess.on('error', (error) => {
         vscode.window.showErrorMessage(`Error executing backend: ${error.message}`);
@@ -56,10 +58,18 @@ export function activate(context: vscode.ExtensionContext) {
   context.subscriptions.push(disposable);
 }
 
-// This method is called when your extension is deactivated
 export function deactivate() {
   // Terminate the backend process if it's running
   if (backendProcess) {
     backendProcess.kill();
+  }
+}
+
+function processBackendMessage(data: Buffer) {
+  try {
+    const message = JSON.parse(data.toString());
+    vscode.window.showInformationMessage(`Backend message: ${JSON.stringify(message)}`);
+  } catch (error: any) {
+    vscode.window.showErrorMessage(`Failed to parse backend message: ${error.message}`);
   }
 }

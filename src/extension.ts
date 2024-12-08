@@ -19,7 +19,7 @@ let isBackendEdit: boolean = false;
 // Global variable to hold queued changes from the backend, since VSCode applies
 // edits asynchronously, and trying to queue multiple simultaneously results in
 // them getting dropped.
-let queuedChanges: Map<DocumentID, Array<any>> = new Map();
+let queuedChanges: Array<[DocumentID, any]> = [];
 // Global variable to track whether the document is currently being
 // programmatically edited to avoid concurrent edits.
 let isCurrentlyProcessingChanges: boolean = false;
@@ -240,17 +240,9 @@ function processBackendMessage(message: any): void {
       vscode.window.showInformationMessage(`Successfully added peer at ${message.address}`)
       break;
     case 'change':
-      const change = message.change;
-
-      if (!queuedChanges.has(message.document_id)) {
-        queuedChanges.set(message.document_id, []);
-      }
+      queuedChanges.push([message.document_id, message.change]);
       
-      queuedChanges.get(message.document_id)!.push(change);
-      
-      processQueuedChanges().then(() => {
-        console.log("Changes processed!");
-      });
+      processQueuedChanges();
       
       break;
     default:
@@ -261,14 +253,13 @@ function processBackendMessage(message: any): void {
 }
 
 async function processQueuedChanges(): Promise<void> {
-  if (queuedChanges.size === 0) {
+  if (isCurrentlyProcessingChanges) {
+    return;
+  }
+  if (queuedChanges.length === 0) {
     console.log('No more changes to process.');
     
     isBackendEdit = false;
-    isCurrentlyProcessingChanges = false
-    return;
-  }
-  if (isCurrentlyProcessingChanges) {
     return;
   }
   
@@ -276,30 +267,28 @@ async function processQueuedChanges(): Promise<void> {
   isCurrentlyProcessingChanges = true;
 
   // Pop first set of changes from the queue and apply them all
-  const id = queuedChanges.keys().next().value!;
-  const changes = queuedChanges.get(id)!;
+  const [id, change] = queuedChanges.shift()!;
   const editor = activeIDToEditor.get(id)!;
+
   const result = await editor.edit(builder => {
-    changes.forEach(change => {
-      if (change.type === "insert") {
-        const position = editor.document.positionAt(change.index);
-        builder.insert(position, change.text);
-      } else if (change.type === "delete") {
-        const start = editor.document.positionAt(change.index);
-        const end = editor.document.positionAt(change.index + change.len);
-        builder.delete(new vscode.Range(start, end));
-      } else {
-        console.warn(`Unknown change: ${JSON.stringify(change)}`)
-      }
-    });
+    if (change.type === "insert") {
+      const position = editor.document.positionAt(change.index);
+      builder.insert(position, change.text);
+    } else if (change.type === "delete") {
+      const start = editor.document.positionAt(change.index);
+      const end = editor.document.positionAt(change.index + change.len);
+      builder.delete(new vscode.Range(start, end));
+    } else {
+      console.warn(`Unknown change: ${JSON.stringify(change)}`)
+    }
   })
 
   if (!result) {
     console.warn('Failed to apply changes to editor.');
   }
-    
-  queuedChanges.delete(id);
-  await processQueuedChanges();
+
+  isCurrentlyProcessingChanges = false;
+  processQueuedChanges();
 }
 
 function sendMessageToBackend(type: string, json: object): void {

@@ -53,6 +53,9 @@ export function activate(context: vscode.ExtensionContext): void {
   context.subscriptions.push(
     vscode.commands.registerCommand('c3edit.createDocument', createDocument)
   );
+  context.subscriptions.push(
+    vscode.commands.registerCommand('c3edit.connectToPeer', connectToPeer)
+  );
 }
 
 export function deactivate(): void {
@@ -90,6 +93,25 @@ function createDocument(): void {
   }
 }
 
+async function connectToPeer(): Promise<void> {
+  if (!ensureBackendProcessActive()) {
+    return;
+  }
+
+  const peerAddress = await vscode.window.showInputBox({
+    prompt: 'Enter the peer address (IP:Port)',
+    placeHolder: 'e.g., 192.168.1.1:8080'
+  });
+
+  if (peerAddress) {
+    sendMessageToBackend("add_peer", { address: peerAddress });
+    vscode.window.showInformationMessage(`Connecting to peer at ${peerAddress}…`);
+  } else {
+    vscode.window.showInformationMessage('No peer address provided.');
+  }
+}
+
+
 function processBackendMessage(data: Buffer): void {
   try {
     const message = JSON.parse(data.toString());
@@ -104,8 +126,11 @@ function processBackendMessage(data: Buffer): void {
           console.warn('No document was being created when response was received.');
         }
         break;
+      case 'add_peer_response':
+        vscode.window.showInformationMessage(`Successfully added peer at ${message.address}`)
+        break;
       default:
-        console.warn('Unknown message type:', message.type);
+        console.warn('Unknown message:', JSON.stringify(message));
         break;
     }
   } catch (error: any) {

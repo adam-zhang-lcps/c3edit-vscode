@@ -35,6 +35,10 @@
       {
         "command": "c3edit.createDocument",
         "title": "Create Document"
+      },
+      {
+        "command": "c3edit.connectToPeer",
+        "title": "Connect to Peer"
       }
     ]
   },

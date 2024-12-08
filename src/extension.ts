@@ -92,7 +92,7 @@ async function joinDocument(): Promise<void> {
   });
 
   if (documentID) {
-    sendMessageToBackend("join_document", { document_id: documentID });
+    sendMessageToBackend("join_document", { id: documentID });
     vscode.window.showInformationMessage(`Joining document with ID ${documentID}…`);
   } else {
     vscode.window.showInformationMessage('No document ID provided.');
@@ -264,6 +264,20 @@ function processBackendMessage(message: any): void {
       queuedChanges.push([message.document_id, message.change]);
       
       processQueuedChanges();
+      
+      break;
+    case 'join_document_response':
+      const id = message.id;
+      const content = message.current_content;
+
+      console.log(`Joined document with ID ${id} and initial content ${content}.`);
+      
+      vscode.workspace.openTextDocument({ content }).then(document => {
+        return vscode.window.showTextDocument(document);
+      }).then(editor => {
+        activeDocumentToID.set(editor.document, id);
+        activeIDToEditor.set(id, editor);
+      });
       
       break;
     default:

@@ -23,6 +23,12 @@ let queuedChanges: Array<[DocumentID, any]> = [];
 // Global variable to track whether the document is currently being
 // programmatically edited to avoid concurrent edits.
 let isCurrentlyProcessingChanges: boolean = false;
+// Decoration type for peer's cursor.
+const peerCursorDecorationType = vscode.window.createTextEditorDecorationType({
+  borderColor: 'red',
+  borderStyle: 'solid',
+  borderWidth: '1px'
+});
 
 // This method is called when your extension is activated
 // Your extension is activated the very first time the command is executed
@@ -279,6 +285,23 @@ function processBackendMessage(message: any): void {
         activeIDToEditor.set(id, editor);
       });
       
+      break;
+    case 'set_cursor':
+      const editor = activeIDToEditor.get(message.document_id)!;
+      const location = message.location;
+      const peerID = message.peer_id;
+
+      if (!peerID) {
+        // Our cursor
+        const selection = editor.selection;
+        const position = editor.document.positionAt(location);
+        editor.selection = new vscode.Selection(selection.anchor, position);
+      } else {
+        // Peer cursor
+        const position = editor.document.positionAt(location);
+        editor.setDecorations(peerCursorDecorationType, [new vscode.Range(position, position)]);
+      }
+        
       break;
     default:
       // console.warn('Unknown message:', JSON.stringify(message));

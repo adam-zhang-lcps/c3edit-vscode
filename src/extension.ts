@@ -9,9 +9,13 @@ type DocumentID = string;
 // Global variable to store the process handle
 let backendProcess: ChildProcess | undefined;
 // Global variable to store the document currently being created on the backend.
-let currentlyCreatingDocument: vscode.TextDocument | undefined;
+let currentlyCreatingDocument: vscode.TextEditor | undefined;
 // Global variable to track editors with active documents.
-const activeDocuments: Map<vscode.TextDocument, DocumentID> = new Map();
+const activeDocumentToID: Map<vscode.TextDocument, DocumentID> = new Map();
+const activeIDToEditor: Map<DocumentID, vscode.TextEditor> = new Map();
+// Global variable to track whether the current edit is from the backend to
+// avoid triggering the `onDidChangeTextDocument` event listener.
+let isBackendEdit: boolean = false;
 
 // This method is called when your extension is activated
 // Your extension is activated the very first time the command is executed
@@ -30,7 +34,7 @@ export function activate(context: vscode.ExtensionContext): void {
           shell: true
         });
 
-        backendProcess.stdout!.on('data', processBackendMessage);
+        backendProcess.stdout!.on('data', handleBackendOutput);
 
         backendProcess.stderr!.on('data', (data) => {
           vscode.window.showErrorMessage(`Backend error: ${data}`);
@@ -91,7 +95,7 @@ export function deactivate(): void {
 function onDidChangeTextEditorSelection(e: vscode.TextEditorSelectionChangeEvent): void {
   const editor = e.textEditor;
   const document = editor.document;
-  const id = activeDocuments.get(document);
+  const id = activeDocumentToID.get(document);
   if (!id) {
     return;
   }
@@ -103,8 +107,12 @@ function onDidChangeTextEditorSelection(e: vscode.TextEditorSelectionChangeEvent
 }
 
 function onDidChangeTextDocument(e: vscode.TextDocumentChangeEvent): void {
+  if (isBackendEdit) {
+    return;
+  }
+  
   const document = e.document;
-  const id = activeDocuments.get(document);
+  const id = activeDocumentToID.get(document);
   if (!id) {
     return;
   }
@@ -163,7 +171,7 @@ function createDocument(): void {
     const name = path.basename(document.fileName);
     const initialContent = document.getText();
 
-    currentlyCreatingDocument = document;
+    currentlyCreatingDocument = activeEditor;
     sendMessageToBackend("create_document", {
       name,
       initial_content: initialContent,
@@ -191,31 +199,69 @@ async function connectToPeer(): Promise<void> {
   }
 }
 
-function processBackendMessage(data: Buffer): void {
+function handleBackendOutput(data: Buffer): void {
   try {
-    const message = JSON.parse(data.toString());
-    switch (message.type) {
-      case 'create_document_response':
-        if (currentlyCreatingDocument) {
-          vscode.window.showInformationMessage(`Document created with ID ${message.id}.`);
-          
-          activeDocuments.set(currentlyCreatingDocument, message.id);
-          currentlyCreatingDocument = undefined;
-        } else {
-          console.warn('No document was being created when response was received.');
-        }
-        break;
-      case 'add_peer_response':
-        vscode.window.showInformationMessage(`Successfully added peer at ${message.address}`)
-        break;
-      default:
-        console.warn('Unknown message:', JSON.stringify(message));
-        break;
-    }
+    const text = data.toString();
+    const messages = text.split('\n');
+    messages.forEach(message => {
+      if (!message) {
+        return;
+      }
+      
+      processBackendMessage(JSON.parse(message));
+    });
   } catch (error: any) {
     vscode.window.showErrorMessage(`Failed to parse backend message!`);
-    console.warn(`Message: ${data.toString()}`)
+    console.warn(`Error: ${error}\nMessage: ${data.toString()}`)
   }
+}
+
+function processBackendMessage(message: any): void {
+  switch (message.type) {
+    case 'create_document_response':
+      if (currentlyCreatingDocument) {
+        vscode.window.showInformationMessage(`Document created with ID ${message.id}.`);
+          
+        activeDocumentToID.set(currentlyCreatingDocument.document, message.id);
+        activeIDToEditor.set(message.id, currentlyCreatingDocument)
+        currentlyCreatingDocument = undefined;
+      } else {
+        console.warn('No document was being created when response was received.');
+      }
+      break;
+    case 'add_peer_response':
+      vscode.window.showInformationMessage(`Successfully added peer at ${message.address}`)
+      break;
+    case 'change':
+      const editor = activeIDToEditor.get(message.document_id)!;
+      const change = message.change;
+
+      isBackendEdit = true;
+      editor.edit(builder => {
+        if (change.type === "insert") {
+          const position = editor.document.positionAt(change.index);
+          builder.insert(position, change.text);
+        } else if (change.type === "delete") {
+          const start = editor.document.positionAt(change.index);
+          const end = editor.document.positionAt(change.index + change.len);
+          builder.delete(new vscode.Range(start, end));
+        } else {
+          console.warn(`Unknown change: ${JSON.stringify(change)}`)
+        }
+      }).then(e => {
+        if (!e) {
+          console.warn('Failed to apply change to editor.');
+        }
+        
+        isBackendEdit = false;
+      });
+        
+      break;
+    default:
+      console.warn('Unknown message:', JSON.stringify(message));
+      break;
+  }
+ 
 }
 
 function sendMessageToBackend(type: string, json: object): void {

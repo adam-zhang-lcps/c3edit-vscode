@@ -44,6 +44,10 @@
       {
         "command": "c3edit.connectToPeer",
         "title": "Connect to Peer"
+      },
+      {
+        "command": "c3edit.joinDocument",
+        "title": "Join Document"
       }
     ]
   },

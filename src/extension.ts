@@ -67,6 +67,9 @@ export function activate(context: vscode.ExtensionContext): void {
     vscode.commands.registerCommand('c3edit.createDocument', createDocument)
   );
   context.subscriptions.push(
+    vscode.commands.registerCommand('c3edit.joinDocument', joinDocument)
+  );
+  context.subscriptions.push(
     vscode.commands.registerCommand('c3edit.connectToPeer', connectToPeer)
   );
 
@@ -76,6 +79,24 @@ export function activate(context: vscode.ExtensionContext): void {
   context.subscriptions.push(
     vscode.workspace.onDidChangeTextDocument(onDidChangeTextDocument)
   );
+}
+
+async function joinDocument(): Promise<void> {
+  if (!ensureBackendProcessActive()) {
+    return;
+  }
+
+  const documentID = await vscode.window.showInputBox({
+    prompt: 'Enter the document ID to join',
+    placeHolder: 'e.g., 12345'
+  });
+
+  if (documentID) {
+    sendMessageToBackend("join_document", { document_id: documentID });
+    vscode.window.showInformationMessage(`Joining document with ID ${documentID}…`);
+  } else {
+    vscode.window.showInformationMessage('No document ID provided.');
+  }
 }
 
 function getAbsoluteIndex(document: vscode.TextDocument, position: vscode.Position): number {

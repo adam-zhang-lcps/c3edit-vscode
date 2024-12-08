@@ -4,12 +4,14 @@ import * as vscode from 'vscode';
 import { spawn, ChildProcess } from 'child_process';
 import * as path from 'path';
 
+type DocumentID = string;
+
 // Global variable to store the process handle
 let backendProcess: ChildProcess | undefined;
 // Global variable to store the document currently being created on the backend.
-let currentlyCreatingDocument: string | undefined;
+let currentlyCreatingDocument: vscode.TextEditor | undefined;
 // Global variable to track editors with active documents.
-const activeDocuments: Map<string, string> = new Map();
+const activeDocuments: Map<vscode.TextEditor, DocumentID> = new Map();
 
 // This method is called when your extension is activated
 // Your extension is activated the very first time the command is executed
@@ -56,6 +58,34 @@ export function activate(context: vscode.ExtensionContext): void {
   context.subscriptions.push(
     vscode.commands.registerCommand('c3edit.connectToPeer', connectToPeer)
   );
+
+  context.subscriptions.push(
+    vscode.window.onDidChangeTextEditorSelection((e) => {
+      const editor = e.textEditor;
+      const id = activeDocuments.get(editor);
+      if (id) {
+        const cursor = editor.selection.active;
+        const point = getAbsoluteIndex(editor.document, editor.selection.active)
+        console.log(cursor);
+        console.log(point);
+        sendMessageToBackend("set_cursor", {document_id: id, location: point});
+      }
+    })
+  );
+}
+
+function getAbsoluteIndex(document: vscode.TextDocument, position: vscode.Position): number {
+  let absoluteIndex = 0;
+
+  // Sum the lengths of all lines before the current line
+  for (let i = 0; i < position.line; i++) {
+    absoluteIndex += document.lineAt(i).text.length + 1; // +1 for the newline character
+  }
+
+  // Add the character index of the position within its line
+  absoluteIndex += position.character;
+
+  return absoluteIndex;
 }
 
 export function deactivate(): void {
@@ -81,8 +111,8 @@ function createDocument(): void {
   
   const activeEditor = vscode.window.activeTextEditor;
   if (activeEditor) {
+    currentlyCreatingDocument = activeEditor;
     const name = path.basename(activeEditor.document.fileName);
-    currentlyCreatingDocument = name;
     const initialContent = activeEditor.document.getText();
     sendMessageToBackend("create_document", {
       name,

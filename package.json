@@ -20,6 +20,11 @@
           "type": "string",
           "default": "",
           "description": "Path to the backend binary."
+        },
+        "c3edit.port": {
+          "type": "number",
+          "default": 6969,
+          "description": "Port to run the backend on."
         }
       }
     },

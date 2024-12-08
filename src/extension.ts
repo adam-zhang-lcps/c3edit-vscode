@@ -60,17 +60,7 @@ export function activate(context: vscode.ExtensionContext): void {
   );
 
   context.subscriptions.push(
-    vscode.window.onDidChangeTextEditorSelection((e) => {
-      const editor = e.textEditor;
-      const id = activeDocuments.get(editor);
-      if (id) {
-        const cursor = editor.selection.active;
-        const point = getAbsoluteIndex(editor.document, editor.selection.active)
-        console.log(cursor);
-        console.log(point);
-        sendMessageToBackend("set_cursor", {document_id: id, location: point});
-      }
-    })
+    vscode.window.onDidChangeTextEditorSelection(onDidChangeTextEditorSelection)
   );
 }
 
@@ -93,6 +83,19 @@ export function deactivate(): void {
   if (backendProcess) {
     backendProcess.kill();
   }
+}
+
+function onDidChangeTextEditorSelection(e: vscode.TextEditorSelectionChangeEvent): void {
+  const editor = e.textEditor;
+  const id = activeDocuments.get(editor);
+  if (!id) {
+    return;
+  }
+  
+  const cursor = editor.selection.active;
+  const point = getAbsoluteIndex(editor.document, cursor)
+
+  sendMessageToBackend("set_cursor", {document_id: id, location: point});
 }
 
 function ensureBackendProcessActive(): boolean {

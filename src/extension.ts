@@ -9,9 +9,9 @@ type DocumentID = string;
 // Global variable to store the process handle
 let backendProcess: ChildProcess | undefined;
 // Global variable to store the document currently being created on the backend.
-let currentlyCreatingDocument: vscode.TextEditor | undefined;
+let currentlyCreatingDocument: vscode.TextDocument | undefined;
 // Global variable to track editors with active documents.
-const activeDocuments: Map<vscode.TextEditor, DocumentID> = new Map();
+const activeDocuments: Map<vscode.TextDocument, DocumentID> = new Map();
 
 // This method is called when your extension is activated
 // Your extension is activated the very first time the command is executed
@@ -87,13 +87,14 @@ export function deactivate(): void {
 
 function onDidChangeTextEditorSelection(e: vscode.TextEditorSelectionChangeEvent): void {
   const editor = e.textEditor;
-  const id = activeDocuments.get(editor);
+  const document = editor.document;
+  const id = activeDocuments.get(document);
   if (!id) {
     return;
   }
   
   const cursor = editor.selection.active;
-  const point = getAbsoluteIndex(editor.document, cursor)
+  const point = getAbsoluteIndex(document, cursor)
 
   sendMessageToBackend("set_cursor", {document_id: id, location: point});
 }
@@ -114,9 +115,11 @@ function createDocument(): void {
   
   const activeEditor = vscode.window.activeTextEditor;
   if (activeEditor) {
-    currentlyCreatingDocument = activeEditor;
-    const name = path.basename(activeEditor.document.fileName);
-    const initialContent = activeEditor.document.getText();
+    const document = activeEditor.document;
+    const name = path.basename(document.fileName);
+    const initialContent = document.getText();
+
+    currentlyCreatingDocument = document;
     sendMessageToBackend("create_document", {
       name,
       initial_content: initialContent,

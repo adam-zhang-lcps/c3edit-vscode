@@ -24,6 +24,9 @@ export function activate(context: vscode.ExtensionContext): void {
   context.subscriptions.push(
     vscode.commands.registerCommand('c3edit.runBackend', () => {
       const backendPath = vscode.workspace.getConfiguration().get<string>('c3edit.backendPath', '');
+
+      console.log(`Starting backend; CWD: ${process.cwd()}, env: ${JSON.stringify(process.env.PATH)}`);
+      
       if (backendPath) {
         const port = vscode.workspace.getConfiguration().get<number>('c3edit.port', 6969);
         backendProcess = spawn(backendPath, ['--port', port.toString()]);

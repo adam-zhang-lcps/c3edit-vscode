@@ -19,14 +19,11 @@ export function activate(context: vscode.ExtensionContext): void {
   // Use the console to output diagnostic information (console.log) and errors (console.error)
   // This line of code will only be executed once when your extension is activated
   console.log('Congratulations, your extension "c3edit" is now active!');
-
-  // Retrieve the backend path from the configuration
-  const backendPath = vscode.workspace.getConfiguration().get<string>('c3edit.backendPath', '');
-  console.log(`Backend path: ${backendPath}`);
   
   // Register a new command to run the backend binary
   context.subscriptions.push(
     vscode.commands.registerCommand('c3edit.runBackend', () => {
+      const backendPath = vscode.workspace.getConfiguration().get<string>('c3edit.backendPath', '');
 	  if (backendPath) {
         backendProcess = spawn(backendPath);
 

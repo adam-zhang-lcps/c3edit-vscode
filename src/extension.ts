@@ -301,10 +301,10 @@ function processBackendMessage(message: any): void {
         const position = editor.document.positionAt(location);
         editor.setDecorations(peerCursorDecorationType, [new vscode.Range(position, position)]);
       }
-        
+
       break;
     default:
-      // console.warn('Unknown message:', JSON.stringify(message));
+      console.warn('Unknown message:', JSON.stringify(message));
       break;
   }
  

@@ -16,6 +16,13 @@ const activeIDToEditor: Map<DocumentID, vscode.TextEditor> = new Map();
 // Global variable to track whether the current edit is from the backend to
 // avoid triggering the `onDidChangeTextDocument` event listener.
 let isBackendEdit: boolean = false;
+// Global variable to hold queued changes from the backend, since VSCode applies
+// edits asynchronously, and trying to queue multiple simultaneously results in
+// them getting dropped.
+let queuedChanges: Map<DocumentID, Array<any>> = new Map();
+// Global variable to track whether the document is currently being
+// programmatically edited to avoid concurrent edits.
+let isCurrentlyProcessingChanges: boolean = false;
 
 // This method is called when your extension is activated
 // Your extension is activated the very first time the command is executed
@@ -233,35 +240,66 @@ function processBackendMessage(message: any): void {
       vscode.window.showInformationMessage(`Successfully added peer at ${message.address}`)
       break;
     case 'change':
-      const editor = activeIDToEditor.get(message.document_id)!;
       const change = message.change;
 
-      isBackendEdit = true;
-      editor.edit(builder => {
-        if (change.type === "insert") {
-          const position = editor.document.positionAt(change.index);
-          builder.insert(position, change.text);
-        } else if (change.type === "delete") {
-          const start = editor.document.positionAt(change.index);
-          const end = editor.document.positionAt(change.index + change.len);
-          builder.delete(new vscode.Range(start, end));
-        } else {
-          console.warn(`Unknown change: ${JSON.stringify(change)}`)
-        }
-      }).then(e => {
-        if (!e) {
-          console.warn('Failed to apply change to editor.');
-        }
-        
-        isBackendEdit = false;
+      if (!queuedChanges.has(message.document_id)) {
+        queuedChanges.set(message.document_id, []);
+      }
+      
+      queuedChanges.get(message.document_id)!.push(change);
+      
+      processQueuedChanges().then(() => {
+        console.log("Changes processed!");
       });
-        
+      
       break;
     default:
-      console.warn('Unknown message:', JSON.stringify(message));
+      // console.warn('Unknown message:', JSON.stringify(message));
       break;
   }
  
+}
+
+async function processQueuedChanges(): Promise<void> {
+  if (queuedChanges.size === 0) {
+    console.log('No more changes to process.');
+    
+    isBackendEdit = false;
+    isCurrentlyProcessingChanges = false
+    return;
+  }
+  if (isCurrentlyProcessingChanges) {
+    return;
+  }
+  
+  isBackendEdit = true;
+  isCurrentlyProcessingChanges = true;
+
+  // Pop first set of changes from the queue and apply them all
+  const id = queuedChanges.keys().next().value!;
+  const changes = queuedChanges.get(id)!;
+  const editor = activeIDToEditor.get(id)!;
+  const result = await editor.edit(builder => {
+    changes.forEach(change => {
+      if (change.type === "insert") {
+        const position = editor.document.positionAt(change.index);
+        builder.insert(position, change.text);
+      } else if (change.type === "delete") {
+        const start = editor.document.positionAt(change.index);
+        const end = editor.document.positionAt(change.index + change.len);
+        builder.delete(new vscode.Range(start, end));
+      } else {
+        console.warn(`Unknown change: ${JSON.stringify(change)}`)
+      }
+    });
+  })
+
+  if (!result) {
+    console.warn('Failed to apply changes to editor.');
+  }
+    
+  queuedChanges.delete(id);
+  await processQueuedChanges();
 }
 
 function sendMessageToBackend(type: string, json: object): void {

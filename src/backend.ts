@@ -135,6 +135,31 @@ function processBackendMessage(message: any): void {
 
 			break;
 		}
+		case "set_selection": {
+			const editor = state.activeIDToEditor.get(message.document_id)!;
+			const selection = message.selection;
+			const peerID = message.peer_id;
+
+			if (!peerID) {
+				// Our selection
+				const point = editor.document.positionAt(selection.point);
+				const mark = editor.document.positionAt(selection.mark);
+
+				editor.selection = new vscode.Selection(mark, point);
+			} else {
+				// Peer's selection
+				// TODO Properly support multiple peers
+
+				const point = editor.document.positionAt(selection.point);
+				const mark = editor.document.positionAt(selection.mark);
+
+				editor.setDecorations(state.peerCursorDecorationType, [
+					new vscode.Range(mark, point),
+				]);
+			}
+
+			break;
+		}
 		case "unset_mark": {
 			// TODO It was working fine without this handler, might just not be
 			// necessary for VSCode.

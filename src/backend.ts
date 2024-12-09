@@ -96,13 +96,13 @@ function processBackendMessage(message: any): void {
 					return vscode.window.showTextDocument(document);
 				})
 				.then((editor) => {
-					state.isBackendEdit = true;
+					state.isEditing = true;
 					editor
 						.edit((builder) => {
 							builder.insert(new vscode.Position(0, 0), content);
 						})
 						.then(() => {
-							state.isBackendEdit = false;
+							state.isEditing = false;
 						});
 					state.activeDocumentToID.set(editor.document, id);
 					state.activeIDToEditor.set(id, editor);
@@ -162,18 +162,15 @@ function processBackendMessage(message: any): void {
 }
 
 async function processQueuedChanges(): Promise<void> {
-	if (state.isCurrentlyProcessingChanges) {
+	if (state.isEditing) {
 		return;
 	}
 	if (state.queuedChanges.length === 0) {
 		console.log("No more changes to process.");
 
-		state.isBackendEdit = false;
+		state.isEditing = false;
 		return;
 	}
-
-	state.isBackendEdit = true;
-	state.isCurrentlyProcessingChanges = true;
 
 	// Pop first set of changes from the queue and apply them all
 	const [id, change] = state.queuedChanges.shift()!;
@@ -196,6 +193,6 @@ async function processQueuedChanges(): Promise<void> {
 		console.warn("Failed to apply changes to editor.");
 	}
 
-	state.isCurrentlyProcessingChanges = false;
+	state.isEditing = false;
 	processQueuedChanges();
 }

@@ -33,7 +33,7 @@ export function onDidChangeTextEditorSelection(
 export function onDidChangeTextDocument(
 	e: vscode.TextDocumentChangeEvent,
 ): void {
-	if (state.isBackendEdit) {
+	if (state.isEditing) {
 		return;
 	}
 

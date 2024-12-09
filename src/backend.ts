@@ -39,6 +39,7 @@ export function handleBackendOutput(data: Buffer): void {
 	}
 }
 
+// TODO Refactor this monstrosity into separate functions.
 function processBackendMessage(message: any): void {
 	switch (message.type) {
 		case "create_document_response":
@@ -139,6 +140,22 @@ function processBackendMessage(message: any): void {
 					documentCursors.set(message.peer_id, position);
 				}
 			}
+
+			break;
+		}
+		case "unset_mark": {
+			// TODO It was working fine without this handler, might just not be
+			// necessary for VSCode.
+			const editor = state.activeIDToEditor.get(message.document_id)!;
+			const documentCursors = state.peerIDToCursor.get(
+				message.document_id,
+			)!;
+			const peerID = message.peer_id;
+
+			const oldCursor = documentCursors.get(peerID);
+			editor.setDecorations(state.peerCursorDecorationType, [
+				new vscode.Range(oldCursor!, oldCursor!),
+			]);
 
 			break;
 		}

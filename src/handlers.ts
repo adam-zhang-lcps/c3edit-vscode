@@ -13,20 +13,19 @@ export function onDidChangeTextEditorSelection(
 	}
 
 	const selection = editor.selection;
-	const cursor = selection.active;
-	const mark = selection.anchor;
-	const point = document.offsetAt(cursor);
-
-	sendMessageToBackend("set_cursor", { document_id: id, location: point });
+	const point = document.offsetAt(selection.active);
+	const mark = document.offsetAt(selection.anchor);
 
 	if (selection.isEmpty) {
-		sendMessageToBackend("unset_selection", { document_id: id });
+		sendMessageToBackend("set_cursor", {
+			document_id: id,
+			location: point,
+		});
 	} else {
-		const markPoint = document.offsetAt(mark);
 		sendMessageToBackend("set_selection", {
 			document_id: id,
 			point,
-			mark: markPoint,
+			mark,
 		});
 	}
 }

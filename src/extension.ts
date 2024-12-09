@@ -1,10 +1,9 @@
 // The module 'vscode' contains the VS Code extensibility API
 // Import the module and reference it with the alias vscode in your code below
 import * as vscode from 'vscode';
-import * as path from 'path';
 import * as handlers from './handlers';
 import state from './state';
-import { spawn } from 'child_process';
+import * as commands from './commands';
 
 // This method is called when your extension is activated
 // Your extension is activated the very first time the command is executed
@@ -12,73 +11,28 @@ export function activate(context: vscode.ExtensionContext): void {
   // Use the console to output diagnostic information (console.log) and errors (console.error)
   // This line of code will only be executed once when your extension is activated
   console.log('Congratulations, your extension "c3edit" is now active!');
-  
-  // Register a new command to run the backend binary
+
+  // Commands
   context.subscriptions.push(
-    vscode.commands.registerCommand('c3edit.runBackend', () => {
-      const backendPath = vscode.workspace.getConfiguration().get<string>('c3edit.backendPath', '');
-      if (backendPath) {
-        const port = vscode.workspace.getConfiguration().get<number>('c3edit.port', 6969);
-        state.backendProcess = spawn(backendPath, ['--port', port.toString()], {
-          shell: true
-        });
-
-        state.backendProcess.stdout!.on('data', handleBackendOutput);
-
-        state.backendProcess.stderr!.on('data', (data) => {
-          vscode.window.showErrorMessage(`Backend error: ${data}`);
-        });
-
-        state.backendProcess.on('error', (error) => {
-          vscode.window.showErrorMessage(`Error executing backend: ${error.message}`);
-        });
-
-        state.backendProcess.on('close', (code) => {
-          vscode.window.showInformationMessage(`Backend process exited with code ${code}`);
-        });
-
-        state.backendProcess.on('spawn', () => {
-          vscode.window.showInformationMessage(`Backend process successfully running on port ${port}!`);
-        })
-	  } else {
-	    vscode.window.showErrorMessage('Backend path is not set. Please configure it in the settings.');
-	  }
-    }));
-
-  context.subscriptions.push(
-    vscode.commands.registerCommand('c3edit.createDocument', createDocument)
+    vscode.commands.registerCommand('c3edit.runBackend', commands.runBackend)
   );
   context.subscriptions.push(
-    vscode.commands.registerCommand('c3edit.joinDocument', joinDocument)
+    vscode.commands.registerCommand('c3edit.createDocument', commands.createDocument)
   );
   context.subscriptions.push(
-    vscode.commands.registerCommand('c3edit.connectToPeer', connectToPeer)
+    vscode.commands.registerCommand('c3edit.joinDocument', commands.joinDocument)
+  );
+  context.subscriptions.push(
+    vscode.commands.registerCommand('c3edit.connectToPeer', commands.connectToPeer)
   );
 
+  // Event handlers
   context.subscriptions.push(
     vscode.window.onDidChangeTextEditorSelection(handlers.onDidChangeTextEditorSelection)
   );
   context.subscriptions.push(
     vscode.workspace.onDidChangeTextDocument(handlers.onDidChangeTextDocument)
   );
-}
-
-async function joinDocument(): Promise<void> {
-  if (!ensureBackendProcessActive()) {
-    return;
-  }
-
-  const documentID = await vscode.window.showInputBox({
-    prompt: 'Enter the document ID to join',
-    placeHolder: 'e.g., 12345'
-  });
-
-  if (documentID) {
-    sendMessageToBackend("join_document", { id: documentID });
-    vscode.window.showInformationMessage(`Joining document with ID ${documentID}…`);
-  } else {
-    vscode.window.showInformationMessage('No document ID provided.');
-  }
 }
 
 export function deactivate(): void {
@@ -88,8 +42,7 @@ export function deactivate(): void {
   }
 }
 
-
-function ensureBackendProcessActive(): boolean {
+export function ensureBackendProcessActive(): boolean {
   if (!state.backendProcess) {
     vscode.window.showErrorMessage('Backend process is not active.');
     return false;
@@ -98,46 +51,7 @@ function ensureBackendProcessActive(): boolean {
   return true;
 }
 
-function createDocument(): void {
-  if (!ensureBackendProcessActive()) {
-    return;
-  }
-  
-  const activeEditor = vscode.window.activeTextEditor;
-  if (activeEditor) {
-    const document = activeEditor.document;
-    const name = path.basename(document.fileName);
-    const initialContent = document.getText();
-
-    state.currentlyCreatingDocument = activeEditor;
-    sendMessageToBackend("create_document", {
-      name,
-      initial_content: initialContent,
-    });
-  } else {
-    vscode.window.showInformationMessage('No active editor window found.');
-  }
-}
-
-async function connectToPeer(): Promise<void> {
-  if (!ensureBackendProcessActive()) {
-    return;
-  }
-
-  const peerAddress = await vscode.window.showInputBox({
-    prompt: 'Enter the peer address (IP:Port)',
-    placeHolder: 'e.g., 192.168.1.1:8080'
-  });
-
-  if (peerAddress) {
-    sendMessageToBackend("add_peer", { address: peerAddress });
-    vscode.window.showInformationMessage(`Connecting to peer at ${peerAddress}…`);
-  } else {
-    vscode.window.showInformationMessage('No peer address provided.');
-  }
-}
-
-function handleBackendOutput(data: Buffer): void {
+export function handleBackendOutput(data: Buffer): void {
   try {
     const text = data.toString();
     const messages = text.split('\n');

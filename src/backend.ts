@@ -95,12 +95,15 @@ function processBackendMessage(message: any): void {
 				.then((document) => {
 					return vscode.window.showTextDocument(document);
 				})
-				.then((editor) => {
-					editor.edit((builder) => {
-						builder.insert(new vscode.Position(0, 0), content);
-					});
-					state.activeDocumentToID.set(editor.document, id);
-					state.activeIDToEditor.set(id, editor);
+			  .then((editor) => {
+                  state.isBackendEdit = true;
+				  editor.edit((builder) => {
+					  builder.insert(new vscode.Position(0, 0), content);
+				  }).then(() => {
+                      state.isBackendEdit = false;
+                  });
+				  state.activeDocumentToID.set(editor.document, id);
+				  state.activeIDToEditor.set(id, editor);
 				});
 
 			break;

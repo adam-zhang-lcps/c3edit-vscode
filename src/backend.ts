@@ -83,11 +83,16 @@ function processBackendMessage(message: any): void {
 			);
 
 			vscode.workspace
-				.openTextDocument({ content })
+				.openTextDocument(
+					vscode.Uri.file(id).with({ scheme: "untitled" }),
+				)
 				.then((document) => {
 					return vscode.window.showTextDocument(document);
 				})
 				.then((editor) => {
+					editor.edit((builder) => {
+						builder.insert(new vscode.Position(0, 0), content);
+					});
 					state.activeDocumentToID.set(editor.document, id);
 					state.activeIDToEditor.set(id, editor);
 				});
@@ -124,7 +129,12 @@ function processBackendMessage(message: any): void {
 				}
 				const documentCursors = state.peerIDToCursor.get(
 					message.document_id,
-				)!;
+				);
+				if (!documentCursors) {
+					// `unset_mark` message was received before `set_cursor`
+					// message; ignore.
+					return;
+				}
 
 				const oldCursor = documentCursors.get(peerID);
 				const position = editor.document.positionAt(location);

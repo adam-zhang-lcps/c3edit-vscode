@@ -160,29 +160,6 @@ function processBackendMessage(message: any): void {
 
 			break;
 		}
-		case "unset_mark": {
-			// TODO It was working fine without this handler, might just not be
-			// necessary for VSCode.
-			const editor = state.activeIDToEditor.get(message.document_id)!;
-			const documentCursors = state.peerIDToCursor.get(
-				message.document_id,
-			);
-
-			if (!documentCursors) {
-				// `unset_mark` message was received before `set_cursor`
-				// message; ignore.
-				return;
-			}
-
-			const peerID = message.peer_id;
-
-			const oldCursor = documentCursors.get(peerID);
-			editor.setDecorations(state.peerCursorDecorationType, [
-				new vscode.Range(oldCursor!, oldCursor!),
-			]);
-
-			break;
-		}
 		default:
 			console.warn("Unknown message:", JSON.stringify(message));
 			break;

@@ -116,10 +116,28 @@ function processBackendMessage(message: any): void {
 				}
 			} else {
 				// Peer cursor
+				// TODO Properly support multiple peers
+
+				if (!state.peerIDToCursor.has(message.document_id)) {
+					state.peerIDToCursor.set(message.document_id, new Map());
+				}
+				const documentCursors = state.peerIDToCursor.get(
+					message.document_id,
+				)!;
+
+				const oldCursor = documentCursors.get(peerID);
 				const position = editor.document.positionAt(location);
-				editor.setDecorations(state.peerCursorDecorationType, [
-					new vscode.Range(position, position),
-				]);
+
+				if (message.mark) {
+					editor.setDecorations(state.peerCursorDecorationType, [
+						new vscode.Range(oldCursor!, position),
+					]);
+				} else {
+					editor.setDecorations(state.peerCursorDecorationType, [
+						new vscode.Range(position, position),
+					]);
+					documentCursors.set(message.peer_id, position);
+				}
 			}
 
 			break;

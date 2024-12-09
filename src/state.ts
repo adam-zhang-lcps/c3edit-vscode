@@ -27,6 +27,8 @@ class GlobalState {
 		borderStyle: "solid",
 		borderWidth: "1px",
 	});
+	// Global variable mapping peer IDs to their cursor position.
+	peerIDToCursor: Map<DocumentID, Map<string, vscode.Position>> = new Map();
 }
 
 export default new GlobalState();

@@ -20,13 +20,13 @@ export function onDidChangeTextEditorSelection(
 	sendMessageToBackend("set_cursor", { document_id: id, location: point });
 
 	if (selection.isEmpty) {
-		sendMessageToBackend("unset_mark", { document_id: id });
+		sendMessageToBackend("unset_selection", { document_id: id });
 	} else {
 		const markPoint = document.offsetAt(mark);
-		sendMessageToBackend("set_cursor", {
+		sendMessageToBackend("set_selection", {
 			document_id: id,
-			location: markPoint,
-			mark: true,
+			point,
+			mark: markPoint,
 		});
 	}
 }

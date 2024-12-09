@@ -159,7 +159,14 @@ function processBackendMessage(message: any): void {
 			const editor = state.activeIDToEditor.get(message.document_id)!;
 			const documentCursors = state.peerIDToCursor.get(
 				message.document_id,
-			)!;
+			);
+
+			if (!documentCursors) {
+				// `unset_mark` message was received before `set_cursor`
+				// message; ignore.
+				return;
+			}
+
 			const peerID = message.peer_id;
 
 			const oldCursor = documentCursors.get(peerID);

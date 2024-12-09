@@ -1,5 +1,5 @@
 import * as vscode from "vscode";
-import { sendMessageToBackend } from "./extension";
+import { sendMessageToBackend } from "./backend";
 import state from "./state";
 
 export function onDidChangeTextEditorSelection(

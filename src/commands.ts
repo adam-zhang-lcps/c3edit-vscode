@@ -4,7 +4,7 @@ import {
 	ensureBackendProcessActive,
 	sendMessageToBackend,
 	handleBackendOutput,
-} from "./extension";
+} from "./backend";
 import state from "./state";
 import { spawn } from "child_process";
 

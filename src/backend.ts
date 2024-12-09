@@ -52,7 +52,10 @@ function processBackendMessage(message: any): void {
 					state.currentlyCreatingDocument.document,
 					message.id,
 				);
-				state.activeIDToEditor.set(message.id, state.currentlyCreatingDocument);
+				state.activeIDToEditor.set(
+					message.id,
+					state.currentlyCreatingDocument,
+				);
 				state.currentlyCreatingDocument = undefined;
 			} else {
 				console.warn(
@@ -114,41 +117,20 @@ function processBackendMessage(message: any): void {
 
 			if (!peerID) {
 				// Our cursor
-				const selection = editor.selection;
 				const position = editor.document.positionAt(location);
 
-				if (message.mark) {
-					editor.selection = new vscode.Selection(position, selection.active);
-				} else {
-					editor.selection = new vscode.Selection(selection.anchor, position);
-				}
+				// No need to preserve anchor, if it was a selection we would've
+				// received `set_selection` instead.
+				editor.selection = new vscode.Selection(position, position);
 			} else {
 				// Peer cursor
 				// TODO Properly support multiple peers
 
-				if (!state.peerIDToCursor.has(message.document_id)) {
-					state.peerIDToCursor.set(message.document_id, new Map());
-				}
-				const documentCursors = state.peerIDToCursor.get(message.document_id);
-				if (!documentCursors) {
-					// `unset_mark` message was received before `set_cursor`
-					// message; ignore.
-					return;
-				}
-
-				const oldCursor = documentCursors.get(peerID);
 				const position = editor.document.positionAt(location);
 
-				if (message.mark) {
-					editor.setDecorations(state.peerCursorDecorationType, [
-						new vscode.Range(oldCursor!, position),
-					]);
-				} else {
-					editor.setDecorations(state.peerCursorDecorationType, [
-						new vscode.Range(position, position),
-					]);
-					documentCursors.set(message.peer_id, position);
-				}
+				editor.setDecorations(state.peerCursorDecorationType, [
+					new vscode.Range(position, position),
+				]);
 			}
 
 			break;
@@ -157,7 +139,9 @@ function processBackendMessage(message: any): void {
 			// TODO It was working fine without this handler, might just not be
 			// necessary for VSCode.
 			const editor = state.activeIDToEditor.get(message.document_id)!;
-			const documentCursors = state.peerIDToCursor.get(message.document_id);
+			const documentCursors = state.peerIDToCursor.get(
+				message.document_id,
+			);
 
 			if (!documentCursors) {
 				// `unset_mark` message was received before `set_cursor`

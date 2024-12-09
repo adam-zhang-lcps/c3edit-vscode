@@ -3,28 +3,29 @@
 import * as vscode from 'vscode';
 import { spawn, ChildProcess } from 'child_process';
 import * as path from 'path';
+import * as handlers from './handlers';
 
 type DocumentID = string;
 
 // Global variable to store the process handle
-let backendProcess: ChildProcess | undefined;
+export let backendProcess: ChildProcess | undefined;
 // Global variable to store the document currently being created on the backend.
-let currentlyCreatingDocument: vscode.TextEditor | undefined;
+export let currentlyCreatingDocument: vscode.TextEditor | undefined;
 // Global variable to track editors with active documents.
-const activeDocumentToID: Map<vscode.TextDocument, DocumentID> = new Map();
-const activeIDToEditor: Map<DocumentID, vscode.TextEditor> = new Map();
+export const activeDocumentToID: Map<vscode.TextDocument, DocumentID> = new Map();
+export const activeIDToEditor: Map<DocumentID, vscode.TextEditor> = new Map();
 // Global variable to track whether the current edit is from the backend to
 // avoid triggering the `onDidChangeTextDocument` event listener.
-let isBackendEdit: boolean = false;
+export let isBackendEdit: boolean = false;
 // Global variable to hold queued changes from the backend, since VSCode applies
 // edits asynchronously, and trying to queue multiple simultaneously results in
 // them getting dropped.
-let queuedChanges: Array<[DocumentID, any]> = [];
+export let queuedChanges: Array<[DocumentID, any]> = [];
 // Global variable to track whether the document is currently being
 // programmatically edited to avoid concurrent edits.
-let isCurrentlyProcessingChanges: boolean = false;
+export let isCurrentlyProcessingChanges: boolean = false;
 // Decoration type for peer's cursor.
-const peerCursorDecorationType = vscode.window.createTextEditorDecorationType({
+export const peerCursorDecorationType = vscode.window.createTextEditorDecorationType({
   borderColor: 'red',
   borderStyle: 'solid',
   borderWidth: '1px'
@@ -80,10 +81,10 @@ export function activate(context: vscode.ExtensionContext): void {
   );
 
   context.subscriptions.push(
-    vscode.window.onDidChangeTextEditorSelection(onDidChangeTextEditorSelection)
+    vscode.window.onDidChangeTextEditorSelection(handlers.onDidChangeTextEditorSelection)
   );
   context.subscriptions.push(
-    vscode.workspace.onDidChangeTextDocument(onDidChangeTextDocument)
+    vscode.workspace.onDidChangeTextDocument(handlers.onDidChangeTextDocument)
   );
 }
 
@@ -112,64 +113,6 @@ export function deactivate(): void {
   }
 }
 
-function onDidChangeTextEditorSelection(e: vscode.TextEditorSelectionChangeEvent): void {
-  const editor = e.textEditor;
-  const document = editor.document;
-  const id = activeDocumentToID.get(document);
-  if (!id) {
-    return;
-  }
-  
-  const cursor = editor.selection.active;
-  const point = document.offsetAt(cursor);
-
-  sendMessageToBackend("set_cursor", {document_id: id, location: point});
-}
-
-function onDidChangeTextDocument(e: vscode.TextDocumentChangeEvent): void {
-  if (isBackendEdit) {
-    return;
-  }
-  
-  const document = e.document;
-  const id = activeDocumentToID.get(document);
-  if (!id) {
-    return;
-  }
-
-  e.contentChanges.forEach(change => {
-    const size = change.rangeLength;
-    const range = change.range;
-    const text = change.text;
-    let backendChange: object | undefined = undefined;
-
-
-    if (size === 0) {
-      // Insertion
-      backendChange = {
-        type: "insert",
-        index: change.rangeOffset,
-        text
-      };
-    } else if (size > 0 && text === "") {
-      // Deletion
-      backendChange = {
-        type: "delete",
-        index: change.rangeOffset,
-        len: size
-      };
-    } else {
-      console.warn(`Unknown change: ${JSON.stringify(change)}`)
-    }
-
-    if (backendChange) {
-      sendMessageToBackend("change", {
-        document_id: id,
-        change: backendChange
-      });
-    }
-  });
-}
 
 function ensureBackendProcessActive(): boolean {
   if (!backendProcess) {
@@ -335,7 +278,7 @@ async function processQueuedChanges(): Promise<void> {
   processQueuedChanges();
 }
 
-function sendMessageToBackend(type: string, json: object): void {
+export function sendMessageToBackend(type: string, json: object): void {
   if (!ensureBackendProcessActive()) {
     return;
   }

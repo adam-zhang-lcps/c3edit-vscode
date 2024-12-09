@@ -1,12 +1,12 @@
 import * as vscode from "vscode";
-import * as path from "path";
+import * as path from "node:path";
 import {
 	ensureBackendProcessActive,
 	sendMessageToBackend,
 	handleBackendOutput,
 } from "./backend";
 import state from "./state";
-import { spawn } from "child_process";
+import { spawn } from "node:child_process";
 
 export function runBackend(): void {
 	const backendPath = vscode.workspace
@@ -20,9 +20,9 @@ export function runBackend(): void {
 			shell: true,
 		});
 
-		state.backendProcess.stdout!.on("data", handleBackendOutput);
+		state.backendProcess.stdout?.on("data", handleBackendOutput);
 
-		state.backendProcess.stderr!.on("data", (data) => {
+		state.backendProcess.stderr?.on("data", (data) => {
 			vscode.window.showErrorMessage(`Backend error: ${data}`);
 		});
 

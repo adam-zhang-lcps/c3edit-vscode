@@ -1,5 +1,5 @@
 import * as vscode from "vscode";
-import { ChildProcess } from "child_process";
+import type { ChildProcess } from "node:child_process";
 
 type DocumentID = string;
 

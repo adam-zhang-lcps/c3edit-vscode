@@ -19,7 +19,7 @@ export function sendMessageToBackend(type: string, json: object): void {
 		type,
 		...json,
 	});
-	state.backendProcess!.stdin!.write(text + "\n");
+	state.backendProcess?.stdin?.write(`${text}\n`);
 }
 
 export function handleBackendOutput(data: Buffer): void {
@@ -34,7 +34,7 @@ export function handleBackendOutput(data: Buffer): void {
 			processBackendMessage(JSON.parse(message));
 		});
 	} catch (error: any) {
-		vscode.window.showErrorMessage(`Failed to parse backend message!`);
+		vscode.window.showErrorMessage("Failed to parse backend message!");
 		console.warn(`Error: ${error}\nMessage: ${data.toString()}`);
 	}
 }
@@ -70,7 +70,7 @@ function processBackendMessage(message: any): void {
 			processQueuedChanges();
 
 			break;
-		case "join_document_response":
+		case "join_document_response": {
 			const id = message.id;
 			const content = message.current_content;
 
@@ -89,7 +89,8 @@ function processBackendMessage(message: any): void {
 				});
 
 			break;
-		case "set_cursor":
+		}
+		case "set_cursor": {
 			const editor = state.activeIDToEditor.get(message.document_id)!;
 			const location = message.location;
 			const peerID = message.peer_id;
@@ -108,6 +109,7 @@ function processBackendMessage(message: any): void {
 			}
 
 			break;
+		}
 		default:
 			console.warn("Unknown message:", JSON.stringify(message));
 			break;

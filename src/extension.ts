@@ -105,20 +105,6 @@ async function joinDocument(): Promise<void> {
   }
 }
 
-function getAbsoluteIndex(document: vscode.TextDocument, position: vscode.Position): number {
-  let absoluteIndex = 0;
-
-  // Sum the lengths of all lines before the current line
-  for (let i = 0; i < position.line; i++) {
-    absoluteIndex += document.lineAt(i).text.length + 1; // +1 for the newline character
-  }
-
-  // Add the character index of the position within its line
-  absoluteIndex += position.character;
-
-  return absoluteIndex;
-}
-
 export function deactivate(): void {
   // Terminate the backend process if it's running
   if (backendProcess) {
@@ -135,7 +121,7 @@ function onDidChangeTextEditorSelection(e: vscode.TextEditorSelectionChangeEvent
   }
   
   const cursor = editor.selection.active;
-  const point = getAbsoluteIndex(document, cursor)
+  const point = document.offsetAt(cursor);
 
   sendMessageToBackend("set_cursor", {document_id: id, location: point});
 }

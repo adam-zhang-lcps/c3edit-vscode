@@ -51,7 +51,10 @@ function processBackendMessage(message: any): void {
 					state.currentlyCreatingDocument.document,
 					message.id,
 				);
-				state.activeIDToEditor.set(message.id, state.currentlyCreatingDocument);
+				state.activeIDToEditor.set(
+					message.id,
+					state.currentlyCreatingDocument,
+				);
 				state.currentlyCreatingDocument = undefined;
 			} else {
 				console.warn(
@@ -99,7 +102,18 @@ function processBackendMessage(message: any): void {
 				// Our cursor
 				const selection = editor.selection;
 				const position = editor.document.positionAt(location);
-				editor.selection = new vscode.Selection(selection.anchor, position);
+
+				if (message.mark) {
+					editor.selection = new vscode.Selection(
+						position,
+						selection.active,
+					);
+				} else {
+					editor.selection = new vscode.Selection(
+						selection.anchor,
+						position,
+					);
+				}
 			} else {
 				// Peer cursor
 				const position = editor.document.positionAt(location);

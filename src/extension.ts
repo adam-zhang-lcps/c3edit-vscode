@@ -1,35 +1,10 @@
 // The module 'vscode' contains the VS Code extensibility API
 // Import the module and reference it with the alias vscode in your code below
 import * as vscode from 'vscode';
-import { spawn, ChildProcess } from 'child_process';
 import * as path from 'path';
 import * as handlers from './handlers';
-
-type DocumentID = string;
-
-// Global variable to store the process handle
-export let backendProcess: ChildProcess | undefined;
-// Global variable to store the document currently being created on the backend.
-export let currentlyCreatingDocument: vscode.TextEditor | undefined;
-// Global variable to track editors with active documents.
-export const activeDocumentToID: Map<vscode.TextDocument, DocumentID> = new Map();
-export const activeIDToEditor: Map<DocumentID, vscode.TextEditor> = new Map();
-// Global variable to track whether the current edit is from the backend to
-// avoid triggering the `onDidChangeTextDocument` event listener.
-export let isBackendEdit: boolean = false;
-// Global variable to hold queued changes from the backend, since VSCode applies
-// edits asynchronously, and trying to queue multiple simultaneously results in
-// them getting dropped.
-export let queuedChanges: Array<[DocumentID, any]> = [];
-// Global variable to track whether the document is currently being
-// programmatically edited to avoid concurrent edits.
-export let isCurrentlyProcessingChanges: boolean = false;
-// Decoration type for peer's cursor.
-export const peerCursorDecorationType = vscode.window.createTextEditorDecorationType({
-  borderColor: 'red',
-  borderStyle: 'solid',
-  borderWidth: '1px'
-});
+import state from './state';
+import { spawn } from 'child_process';
 
 // This method is called when your extension is activated
 // Your extension is activated the very first time the command is executed
@@ -44,25 +19,25 @@ export function activate(context: vscode.ExtensionContext): void {
       const backendPath = vscode.workspace.getConfiguration().get<string>('c3edit.backendPath', '');
       if (backendPath) {
         const port = vscode.workspace.getConfiguration().get<number>('c3edit.port', 6969);
-        backendProcess = spawn(backendPath, ['--port', port.toString()], {
+        state.backendProcess = spawn(backendPath, ['--port', port.toString()], {
           shell: true
         });
 
-        backendProcess.stdout!.on('data', handleBackendOutput);
+        state.backendProcess.stdout!.on('data', handleBackendOutput);
 
-        backendProcess.stderr!.on('data', (data) => {
+        state.backendProcess.stderr!.on('data', (data) => {
           vscode.window.showErrorMessage(`Backend error: ${data}`);
         });
 
-        backendProcess.on('error', (error) => {
+        state.backendProcess.on('error', (error) => {
           vscode.window.showErrorMessage(`Error executing backend: ${error.message}`);
         });
 
-        backendProcess.on('close', (code) => {
+        state.backendProcess.on('close', (code) => {
           vscode.window.showInformationMessage(`Backend process exited with code ${code}`);
         });
 
-        backendProcess.on('spawn', () => {
+        state.backendProcess.on('spawn', () => {
           vscode.window.showInformationMessage(`Backend process successfully running on port ${port}!`);
         })
 	  } else {
@@ -108,14 +83,14 @@ async function joinDocument(): Promise<void> {
 
 export function deactivate(): void {
   // Terminate the backend process if it's running
-  if (backendProcess) {
-    backendProcess.kill();
+  if (state.backendProcess) {
+    state.backendProcess.kill();
   }
 }
 
 
 function ensureBackendProcessActive(): boolean {
-  if (!backendProcess) {
+  if (!state.backendProcess) {
     vscode.window.showErrorMessage('Backend process is not active.');
     return false;
   }
@@ -134,7 +109,7 @@ function createDocument(): void {
     const name = path.basename(document.fileName);
     const initialContent = document.getText();
 
-    currentlyCreatingDocument = activeEditor;
+    state.currentlyCreatingDocument = activeEditor;
     sendMessageToBackend("create_document", {
       name,
       initial_content: initialContent,
@@ -182,12 +157,12 @@ function handleBackendOutput(data: Buffer): void {
 function processBackendMessage(message: any): void {
   switch (message.type) {
     case 'create_document_response':
-      if (currentlyCreatingDocument) {
+      if (state.currentlyCreatingDocument) {
         vscode.window.showInformationMessage(`Document created with ID ${message.id}.`);
           
-        activeDocumentToID.set(currentlyCreatingDocument.document, message.id);
-        activeIDToEditor.set(message.id, currentlyCreatingDocument)
-        currentlyCreatingDocument = undefined;
+        state.activeDocumentToID.set(state.currentlyCreatingDocument.document, message.id);
+        state.activeIDToEditor.set(message.id, state.currentlyCreatingDocument)
+        state.currentlyCreatingDocument = undefined;
       } else {
         console.warn('No document was being created when response was received.');
       }
@@ -196,7 +171,7 @@ function processBackendMessage(message: any): void {
       vscode.window.showInformationMessage(`Successfully added peer at ${message.address}`)
       break;
     case 'change':
-      queuedChanges.push([message.document_id, message.change]);
+      state.queuedChanges.push([message.document_id, message.change]);
       
       processQueuedChanges();
       
@@ -210,13 +185,13 @@ function processBackendMessage(message: any): void {
       vscode.workspace.openTextDocument({ content }).then(document => {
         return vscode.window.showTextDocument(document);
       }).then(editor => {
-        activeDocumentToID.set(editor.document, id);
-        activeIDToEditor.set(id, editor);
+        state.activeDocumentToID.set(editor.document, id);
+        state.activeIDToEditor.set(id, editor);
       });
       
       break;
     case 'set_cursor':
-      const editor = activeIDToEditor.get(message.document_id)!;
+      const editor = state.activeIDToEditor.get(message.document_id)!;
       const location = message.location;
       const peerID = message.peer_id;
 
@@ -228,7 +203,7 @@ function processBackendMessage(message: any): void {
       } else {
         // Peer cursor
         const position = editor.document.positionAt(location);
-        editor.setDecorations(peerCursorDecorationType, [new vscode.Range(position, position)]);
+        editor.setDecorations(state.peerCursorDecorationType, [new vscode.Range(position, position)]);
       }
 
       break;
@@ -240,22 +215,22 @@ function processBackendMessage(message: any): void {
 }
 
 async function processQueuedChanges(): Promise<void> {
-  if (isCurrentlyProcessingChanges) {
+  if (state.isCurrentlyProcessingChanges) {
     return;
   }
-  if (queuedChanges.length === 0) {
+  if (state.queuedChanges.length === 0) {
     console.log('No more changes to process.');
     
-    isBackendEdit = false;
+    state.isBackendEdit = false;
     return;
   }
   
-  isBackendEdit = true;
-  isCurrentlyProcessingChanges = true;
+  state.isBackendEdit = true;
+  state.isCurrentlyProcessingChanges = true;
 
   // Pop first set of changes from the queue and apply them all
-  const [id, change] = queuedChanges.shift()!;
-  const editor = activeIDToEditor.get(id)!;
+  const [id, change] = state.queuedChanges.shift()!;
+  const editor = state.activeIDToEditor.get(id)!;
 
   const result = await editor.edit(builder => {
     if (change.type === "insert") {
@@ -274,7 +249,7 @@ async function processQueuedChanges(): Promise<void> {
     console.warn('Failed to apply changes to editor.');
   }
 
-  isCurrentlyProcessingChanges = false;
+  state.isCurrentlyProcessingChanges = false;
   processQueuedChanges();
 }
 
@@ -287,5 +262,5 @@ export function sendMessageToBackend(type: string, json: object): void {
     type,
     ...json
   });
-  backendProcess!.stdin!.write(text + '\n');
+  state.backendProcess!.stdin!.write(text + '\n');
 }

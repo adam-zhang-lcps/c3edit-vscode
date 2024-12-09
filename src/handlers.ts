@@ -1,10 +1,11 @@
 import * as vscode from 'vscode';
-import { activeDocumentToID, sendMessageToBackend, isBackendEdit } from './extension';
+import { sendMessageToBackend } from './extension';
+import state from './state';
 
 export function onDidChangeTextEditorSelection(e: vscode.TextEditorSelectionChangeEvent): void {
   const editor = e.textEditor;
   const document = editor.document;
-  const id = activeDocumentToID.get(document);
+  const id = state.activeDocumentToID.get(document);
   if (!id) {
     return;
   }
@@ -16,12 +17,12 @@ export function onDidChangeTextEditorSelection(e: vscode.TextEditorSelectionChan
 }
 
 export function onDidChangeTextDocument(e: vscode.TextDocumentChangeEvent): void {
-  if (isBackendEdit) {
+  if (state.isBackendEdit) {
     return;
   }
   
   const document = e.document;
-  const id = activeDocumentToID.get(document);
+  const id = state.activeDocumentToID.get(document);
   if (!id) {
     return;
   }

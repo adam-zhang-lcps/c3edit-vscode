@@ -52,10 +52,7 @@ function processBackendMessage(message: any): void {
 					state.currentlyCreatingDocument.document,
 					message.id,
 				);
-				state.activeIDToEditor.set(
-					message.id,
-					state.currentlyCreatingDocument,
-				);
+				state.activeIDToEditor.set(message.id, state.currentlyCreatingDocument);
 				state.currentlyCreatingDocument = undefined;
 			} else {
 				console.warn(
@@ -95,15 +92,17 @@ function processBackendMessage(message: any): void {
 				.then((document) => {
 					return vscode.window.showTextDocument(document);
 				})
-			  .then((editor) => {
-                  state.isBackendEdit = true;
-				  editor.edit((builder) => {
-					  builder.insert(new vscode.Position(0, 0), content);
-				  }).then(() => {
-                      state.isBackendEdit = false;
-                  });
-				  state.activeDocumentToID.set(editor.document, id);
-				  state.activeIDToEditor.set(id, editor);
+				.then((editor) => {
+					state.isBackendEdit = true;
+					editor
+						.edit((builder) => {
+							builder.insert(new vscode.Position(0, 0), content);
+						})
+						.then(() => {
+							state.isBackendEdit = false;
+						});
+					state.activeDocumentToID.set(editor.document, id);
+					state.activeIDToEditor.set(id, editor);
 				});
 
 			break;
@@ -119,15 +118,9 @@ function processBackendMessage(message: any): void {
 				const position = editor.document.positionAt(location);
 
 				if (message.mark) {
-					editor.selection = new vscode.Selection(
-						position,
-						selection.active,
-					);
+					editor.selection = new vscode.Selection(position, selection.active);
 				} else {
-					editor.selection = new vscode.Selection(
-						selection.anchor,
-						position,
-					);
+					editor.selection = new vscode.Selection(selection.anchor, position);
 				}
 			} else {
 				// Peer cursor
@@ -136,9 +129,7 @@ function processBackendMessage(message: any): void {
 				if (!state.peerIDToCursor.has(message.document_id)) {
 					state.peerIDToCursor.set(message.document_id, new Map());
 				}
-				const documentCursors = state.peerIDToCursor.get(
-					message.document_id,
-				);
+				const documentCursors = state.peerIDToCursor.get(message.document_id);
 				if (!documentCursors) {
 					// `unset_mark` message was received before `set_cursor`
 					// message; ignore.
@@ -166,9 +157,7 @@ function processBackendMessage(message: any): void {
 			// TODO It was working fine without this handler, might just not be
 			// necessary for VSCode.
 			const editor = state.activeIDToEditor.get(message.document_id)!;
-			const documentCursors = state.peerIDToCursor.get(
-				message.document_id,
-			);
+			const documentCursors = state.peerIDToCursor.get(message.document_id);
 
 			if (!documentCursors) {
 				// `unset_mark` message was received before `set_cursor`

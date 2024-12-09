@@ -82,9 +82,15 @@ function processBackendMessage(message: any): void {
 				`Joined document with ID ${id} and initial content ${content}.`,
 			);
 
+			const defaultUri =
+				vscode.workspace.workspaceFolders?.[0].uri ||
+				vscode.Uri.parse("file://");
+
 			vscode.workspace
 				.openTextDocument(
-					vscode.Uri.file(id).with({ scheme: "untitled" }),
+					vscode.Uri.joinPath(defaultUri, id).with({
+						scheme: "untitled",
+					}),
 				)
 				.then((document) => {
 					return vscode.window.showTextDocument(document);

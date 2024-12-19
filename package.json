@@ -31,23 +31,23 @@
     "commands": [
       {
         "command": "c3edit.helloWorld",
-        "title": "Hello World"
+        "title": "c3edit: Hello World"
       },
       {
         "command": "c3edit.runBackend",
-        "title": "Run Backend"
+        "title": "c3edit: Run Backend"
       },
       {
         "command": "c3edit.createDocument",
-        "title": "Create Document"
+        "title": "c3edit: Create Document"
       },
       {
         "command": "c3edit.connectToPeer",
-        "title": "Connect to Peer"
+        "title": "c3edit: Connect to Peer"
       },
       {
         "command": "c3edit.joinDocument",
-        "title": "Join Document"
+        "title": "c3edit: Join Document"
       }
     ]
   },
